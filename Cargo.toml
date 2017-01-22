@@ -1,0 +1,4 @@
+[package]
+name = "smallpt_rust"
+version = "0.1.0"
+authors = ["Simon Brown <si@sjbrown.co.uk>"]
