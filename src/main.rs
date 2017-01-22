@@ -226,10 +226,12 @@ fn radiance(r: Ray, depth: i32, xi: &mut RandomState) -> Vec3 {
 		let p = f.x.max(f.y).max(f.z); // max refl
 
 		let depth = depth + 1;
-		if erand48(xi) < p {
-			f = f*(1.0/p);
-		} else {
-			return obj.e;
+		if depth > 5 {
+			if erand48(xi) < p {
+				f = f*(1.0/p);
+			} else {
+				return obj.e;
+			}
 		}
 
 		match obj.refl {
