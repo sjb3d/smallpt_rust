@@ -4,6 +4,7 @@ use std::io::{Write, Result};
 use std::{thread, time};
 use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
 use std::sync::{Arc, Mutex};
+use std::env;
 
 type F = f64;
 use std::f64::consts::PI;
@@ -246,7 +247,7 @@ fn radiance(r: Ray, depth: i32, xi: &mut RandomState) -> Vec3 {
 				obj.e + f*radiance(Ray{ o: x, d: d }, depth, xi)
 			},
 			Refl::Spec => {
-				obj.e + f*radiance(Ray{ o: x, d: r.d - n*2.0*dot(n, r.d) },depth, xi)
+				obj.e + f*radiance(Ray{ o: x, d: r.d - n*2.0*dot(n, r.d) }, depth, xi)
 			},
 			Refl::Refr => {
 				let refl_ray = Ray{ o: x, d: r.d - n*2.0*dot(n, r.d) };
@@ -290,7 +291,6 @@ fn radiance(r: Ray, depth: i32, xi: &mut RandomState) -> Vec3 {
 
 const W: usize = 1024;
 const H: usize = 768;
-const SAMPS: usize = 4;
 
 type Row = Vec<Vec3>;
 type Image = Vec<Row>;
@@ -308,9 +308,10 @@ fn write_output(image: &Image) -> Result<()> {
 
 static Y: AtomicUsize = ATOMIC_USIZE_INIT;
 static DONE: AtomicUsize = ATOMIC_USIZE_INIT;
-const THREAD_COUNT: usize = 4;
 
 fn main() {
+	let samps = if let Some(arg) = env::args().nth(1) { arg.parse::<usize>().unwrap()/4 } else { 1 };
+
 	let cam = Ray{
 		o: Vec3{ x: 50.0, y: 52.0, z: 295.6 },
 		d: Vec3{ x: 0.0, y: -0.042612, z: -1.0 }.norm() };
@@ -320,6 +321,7 @@ fn main() {
 
 	let image_store = Arc::new(Mutex::new(vec![Row::new(); H]));
 
+	const THREAD_COUNT: usize = 4;
 	for _ in 0..THREAD_COUNT {
 		let image_store = image_store.clone();
 		let y = &Y;
@@ -337,7 +339,7 @@ fn main() {
 					for sy in 0..2 {
 						for sx in 0..2 {
 							let mut r = Vec3{ x: 0.0, y: 0.0, z : 0.0 };
-							for _ in 0..SAMPS {
+							for _ in 0..samps {
 								let r1 = 2.0*erand48(&mut xi);
 								let r2 = 2.0*erand48(&mut xi);
 								let dx = if r1 < 1.0 { r1.sqrt() - 1.0 } else { 1.0 - (2.0 - r1).sqrt() };
@@ -345,7 +347,7 @@ fn main() {
 								let d = cam.d
 									+ cx*(((((sx as F) + 0.5 + dx)/2.0) + (x as F))/(W as F) - 0.5)
 									+ cy*(0.5 - ((((sy as F) + 0.5 + dy)/2.0) + (y as F))/(H as F));
-								r = r + radiance(Ray{ o: cam.o + d*140.0, d: d.norm() }, 0, &mut xi)*(1.0/(SAMPS as F));
+								r = r + radiance(Ray{ o: cam.o + d*140.0, d: d.norm() }, 0, &mut xi)*(1.0/(samps as F));
 							}
 							ci = ci + Vec3{ x: clamp(r.x), y: clamp(r.y), z: clamp(r.z) }*0.25;
 						}
@@ -365,7 +367,7 @@ fn main() {
 			break;
 		}
 		let y = Y.load(Ordering::SeqCst);
-		println!("rendering ({} spp) {:.1}%...", SAMPS*4, 100.0*(y as F)/((H - 1) as F));
+		println!("rendering ({} spp) {:.1}%...", samps*4, 100.0*(y as F)/((H - 1) as F));
 		thread::sleep(time::Duration::from_millis(200));
 	}
 
