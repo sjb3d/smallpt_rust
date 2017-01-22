@@ -366,7 +366,7 @@ fn main() {
 		}
 		let y = Y.load(Ordering::SeqCst);
 		println!("rendering ({} spp) {:.1}%...", SAMPS*4, 100.0*(y as F)/((H - 1) as F));
-        thread::sleep(time::Duration::from_millis(200));
+		thread::sleep(time::Duration::from_millis(200));
 	}
 
 	println!("writing output...");
